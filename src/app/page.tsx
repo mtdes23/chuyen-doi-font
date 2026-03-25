@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, CheckCircle, AlertCircle, Download, RefreshCw, Type, File as FileIcon, Loader2, Archive } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, Download, RefreshCw, Type, File as FileIcon, Loader2, Archive, Coffee, CreditCard, X, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import JSZip from "jszip";
 
@@ -20,6 +20,7 @@ export default function Home() {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -47,7 +48,7 @@ export default function Home() {
   };
 
   const addFiles = (selectedFiles: File[]) => {
-    // Filter woff and woff2 and limit to 100
+    // Filter woff and woff2
     const validFiles = selectedFiles.filter(f => {
       const name = f.name.toLowerCase();
       return name.endsWith(".woff2") || name.endsWith(".woff");
@@ -55,15 +56,27 @@ export default function Home() {
 
     if (validFiles.length === 0) return;
 
-    const newEntries: FileEntry[] = validFiles.slice(0, 100).map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      status: "idle"
-    }));
-
     setFiles(prev => {
-      const combined = [...prev, ...newEntries];
-      return combined.slice(0, 100); // hard cap at 100 overall
+      let combined = [...prev];
+      let limitReached = false;
+
+      for (const file of validFiles) {
+        if (combined.length >= 10) {
+          limitReached = true;
+          break;
+        }
+        combined.push({
+          id: Math.random().toString(36).substr(2, 9),
+          file,
+          status: "idle"
+        });
+      }
+
+      if (limitReached) {
+        setShowDonate(true);
+      }
+
+      return combined;
     });
   };
 
@@ -170,7 +183,7 @@ export default function Home() {
             Font Converter Pro
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Batch convert up to 100 <b>.woff</b> or <b>.woff2</b> files into fully compatible TTF and OTF formats at once.
+            Batch convert up to 10 <b>.woff</b> or <b>.woff2</b> files into fully compatible TTF and OTF formats at once.
           </p>
         </motion.div>
 
@@ -206,7 +219,7 @@ export default function Home() {
                     Click or drag your .woff / .woff2 files here
                   </p>
                   <p className="text-sm text-slate-500 mt-2">
-                    Convert up to 100 files simultaneously
+                    Convert up to 10 files simultaneously
                   </p>
                 </div>
               </div>
@@ -350,6 +363,72 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showDonate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+            >
+              <button 
+                onClick={() => setShowDonate(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="absolute top-[-50px] right-[-50px] w-[150px] h-[150px] bg-primary/10 rounded-full blur-[50px] pointer-events-none" />
+
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-pink-500/20">
+                <Heart className="w-8 h-8 text-white fill-white/20" />
+              </div>
+
+              <h2 className="text-2xl font-bold text-white mb-2">Ủng hộ tác giả</h2>
+              <p className="text-slate-300 mb-6 leading-relaxed">
+                Hệ thống chỉ cho phép chuyển đổi tối đa 10 font cùng lúc hoàn toàn miễn phí. Để không giới hạn số lượng và ủng hộ tinh thần tác giả, vui lòng Donate qua các hình thức dưới đây nhé! ❤️
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-800/80 border border-slate-700/50 hover:border-pink-500/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Coffee className="w-6 h-6 text-pink-400" />
+                    <span className="font-semibold text-white">Buy Me a Coffee (Momo)</span>
+                  </div>
+                  <p className="text-slate-400 text-sm ml-9 break-all">Số điện thoại: <strong className="text-white text-base">0336779222</strong></p>
+                </div>
+
+                <a 
+                  href="https://paypal.me/thachminhtri" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-800/80 border border-slate-700/50 hover:border-blue-500/30 transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-6 h-6 text-blue-400" />
+                    <span className="font-semibold text-white group-hover:text-blue-400 transition-colors">Gửi qua PayPal</span>
+                  </div>
+                  <p className="text-slate-400 text-sm ml-9 truncate">paypal.me/thachminhtri</p>
+                </a>
+              </div>
+
+              <button 
+                onClick={() => setShowDonate(false)}
+                className="w-full mt-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-colors"
+              >
+                Đã hiểu, tiếp tục
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
