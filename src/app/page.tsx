@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, CheckCircle, AlertCircle, RefreshCw, Type, File as FileIcon, Loader2, Archive, Coffee, X, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import JSZip from "jszip";
 
 type FileStatus = "idle" | "converting" | "success" | "error";
@@ -402,17 +403,15 @@ export default function Home() {
                   <p className="text-slate-400 text-sm ml-9 break-all">Số điện thoại: <strong className="text-white text-base">0336779222</strong></p>
                   
                   <div className="mt-4 flex justify-center bg-white p-2 rounded-xl">
-                    <img 
+                    <Image 
                       src="/momo-qr.jpg" 
                       alt="Momo QR Code" 
-                      width="192"
-                      height="192"
+                      width={192}
+                      height={192}
                       className="object-contain rounded-lg"
+                      unoptimized={true}
                     />
                   </div>
-                  <p className="text-xs text-center text-slate-500 mt-2">
-                    (Vui lòng lưu ảnh QR code của bạn vào thư mục <b>public/momo-qr.jpg</b>)
-                  </p>
                 </div>
               </div>
 
