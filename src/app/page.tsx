@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, CheckCircle, AlertCircle, Download, RefreshCw, Type, File as FileIcon, Loader2, Archive, Coffee, CreditCard, X, Heart } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, RefreshCw, Type, File as FileIcon, Loader2, Archive, Coffee, X, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import JSZip from "jszip";
 
@@ -57,7 +57,7 @@ export default function Home() {
     if (validFiles.length === 0) return;
 
     setFiles(prev => {
-      let combined = [...prev];
+      const combined = [...prev];
       let limitReached = false;
 
       for (const file of validFiles) {
@@ -403,20 +403,22 @@ export default function Home() {
                     <span className="font-semibold text-white">Buy Me a Coffee (Momo)</span>
                   </div>
                   <p className="text-slate-400 text-sm ml-9 break-all">Số điện thoại: <strong className="text-white text-base">0336779222</strong></p>
-                </div>
-
-                <a 
-                  href="https://paypal.me/thachminhtri" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-800/80 border border-slate-700/50 hover:border-blue-500/30 transition-colors group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="w-6 h-6 text-blue-400" />
-                    <span className="font-semibold text-white group-hover:text-blue-400 transition-colors">Gửi qua PayPal</span>
+                  
+                  <div className="mt-4 flex justify-center bg-white p-2 rounded-xl">
+                    <img 
+                      src="/momo-qr.jpg" 
+                      alt="Momo QR Code" 
+                      className="w-48 h-48 object-contain rounded-lg"
+                      onError={(e) => {
+                        // Fallback if image not found
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
                   </div>
-                  <p className="text-slate-400 text-sm ml-9 truncate">paypal.me/thachminhtri</p>
-                </a>
+                  <p className="text-xs text-center text-slate-500 mt-2">
+                    (Vui lòng lưu ảnh QR code của bạn vào thư mục <b>public/momo-qr.jpg</b>)
+                  </p>
+                </div>
               </div>
 
               <button 
