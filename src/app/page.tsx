@@ -405,11 +405,9 @@ export default function Home() {
                     <img 
                       src="/momo-qr.jpg" 
                       alt="Momo QR Code" 
-                      className="w-48 h-48 object-contain rounded-lg"
-                      onError={(e) => {
-                        // Fallback if image not found
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
+                      width="192"
+                      height="192"
+                      className="object-contain rounded-lg"
                     />
                   </div>
                   <p className="text-xs text-center text-slate-500 mt-2">
