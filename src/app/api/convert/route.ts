@@ -37,17 +37,12 @@ export async function POST(req: Request) {
       ttfBuffer = Buffer.from(parsedFont.toArrayBuffer());
     }
 
-    // Both OTT and TTF can share the decompressed buffer safely
-    const otfBuffer = ttfBuffer;
-
     const ttfBase64 = ttfBuffer.toString('base64');
-    const otfBase64 = otfBuffer.toString('base64');
 
     return NextResponse.json({
       success: true,
       originalName: file.name,
-      ttf: ttfBase64,
-      otf: otfBase64
+      ttf: ttfBase64
     });
   } catch (error: unknown) {
     console.error("Conversion error:", error);

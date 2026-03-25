@@ -13,7 +13,6 @@ interface FileEntry {
   status: FileStatus;
   errorMessage?: string;
   ttf?: string;
-  otf?: string;
 }
 
 export default function Home() {
@@ -114,7 +113,6 @@ export default function Home() {
           const next = [...prev];
           next[i].status = "success";
           next[i].ttf = data.ttf;
-          next[i].otf = data.otf;
           return next;
         });
       } catch (err: unknown) {
@@ -129,7 +127,7 @@ export default function Home() {
   };
 
   const downloadAllAsZip = async () => {
-    const successfulFiles = files.filter(f => f.status === "success" && f.ttf && f.otf);
+    const successfulFiles = files.filter(f => f.status === "success" && f.ttf);
     if (successfulFiles.length === 0) return;
 
     setIsZipping(true);
@@ -137,8 +135,7 @@ export default function Home() {
 
     successfulFiles.forEach(f => {
       const nameWithoutExt = f.file.name.replace(/\.woff2?$/i, "");
-      zip.file(`TTF/${nameWithoutExt}.ttf`, f.ttf!, { base64: true });
-      zip.file(`OTF/${nameWithoutExt}.otf`, f.otf!, { base64: true });
+      zip.file(`${nameWithoutExt}.ttf`, f.ttf!, { base64: true });
     });
 
     const content = await zip.generateAsync({ type: "blob" });
@@ -183,7 +180,7 @@ export default function Home() {
             Font Converter Pro
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Batch convert up to 10 <b>.woff</b> or <b>.woff2</b> files into fully compatible TTF and OTF formats at once.
+            Batch convert up to 10 <b>.woff</b> or <b>.woff2</b> files into fully compatible TTF format at once.
           </p>
         </motion.div>
 
