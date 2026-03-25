@@ -39,11 +39,16 @@ export async function POST(req: Request) {
       hinting: true
     });
 
-    // Write to OTF
-    const otfBuffer = font.write({
-      type: 'otf',
-      hinting: true
-    });
+    // Write to OTF (Fallback to TTF-flavored OTF if it fails due to missing CFF outlines)
+    let otfBuffer = ttfBuffer;
+    try {
+      otfBuffer = font.write({
+        type: 'otf',
+        hinting: true
+      });
+    } catch {
+      console.warn("OTF generation skipped (TrueType outlines), falling back to TTF buffer.");
+    }
 
     // We can return both as base64 in a JSON response
     // or return a zip file. Returning base64 is easier for standard REST
