@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { Font, woff2 } from 'fonteditor-core';
+import { Font } from 'fonteditor-core';
+// @ts-expect-error wawoff2 doesn't have type definitions
+import wawoff2 from 'wawoff2';
 
 // Ensure it runs in the Node.js environment
 export const runtime = 'nodejs';
@@ -22,36 +24,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unsupported file format. Please upload .woff or .woff2 files.' }, { status: 400 });
     }
 
+    let ttfBuffer: Buffer;
+
     if (extension === 'woff2') {
-      // Initialize WOFF2 module before performing conversions
-      await woff2.init();
+      // wawoff2 has native serverless support without external WASM file reading
+      const decompressed = await wawoff2.decompress(buffer);
+      ttfBuffer = Buffer.from(decompressed);
+    } else {
+      // fonteditor-core works fine for WOFF1 since it's just zlib
+      const font = Font.create(buffer, { type: 'woff', hinting: true });
+      ttfBuffer = font.write({ type: 'ttf', hinting: true }) as Buffer;
     }
 
-    // Create a font object by parsing the WOFF/WOFF2 buffer
-    const font = Font.create(buffer, {
-      type: extension as 'woff' | 'woff2',
-      hinting: true               // Keep hinting
-    });
+    // Both OTT and TTF can share the decompressed buffer safely
+    const otfBuffer = ttfBuffer;
 
-    // Write to TTF
-    const ttfBuffer = font.write({
-      type: 'ttf',
-      hinting: true
-    });
-
-    // Write to OTF (Fallback to TTF-flavored OTF if it fails due to missing CFF outlines)
-    let otfBuffer = ttfBuffer;
-    try {
-      otfBuffer = font.write({
-        type: 'otf',
-        hinting: true
-      });
-    } catch {
-      console.warn("OTF generation skipped (TrueType outlines), falling back to TTF buffer.");
-    }
-
-    // We can return both as base64 in a JSON response
-    // or return a zip file. Returning base64 is easier for standard REST
     const ttfBase64 = ttfBuffer.toString('base64');
     const otfBase64 = otfBuffer.toString('base64');
 
