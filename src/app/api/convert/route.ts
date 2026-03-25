@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Font } from 'fonteditor-core';
+import opentype from 'opentype.js';
 // @ts-expect-error wawoff2 doesn't have type definitions
 import wawoff2 from 'wawoff2';
 
@@ -31,9 +31,10 @@ export async function POST(req: Request) {
       const decompressed = await wawoff2.decompress(buffer);
       ttfBuffer = Buffer.from(decompressed);
     } else {
-      // fonteditor-core works fine for WOFF1 since it's just zlib
-      const font = Font.create(buffer, { type: 'woff', hinting: true });
-      ttfBuffer = font.write({ type: 'ttf', hinting: true }) as Buffer;
+      // opentype.js gracefully handles complex WOFF files (zlib compressed SFNT tables)
+      // toArrayBuffer safely rebuilds a standard TrueType/OpenType structure
+      const parsedFont = opentype.parse(buffer.buffer);
+      ttfBuffer = Buffer.from(parsedFont.toArrayBuffer());
     }
 
     // Both OTT and TTF can share the decompressed buffer safely

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["fonteditor-core"]
+  // Empty config, Next.js defaults are fine
 };
 
 export default nextConfig;
