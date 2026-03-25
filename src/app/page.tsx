@@ -391,7 +391,7 @@ export default function Home() {
 
               <h2 className="text-2xl font-bold text-white mb-2">Ủng hộ tác giả</h2>
               <p className="text-slate-300 mb-6 leading-relaxed">
-                Hệ thống chỉ cho phép chuyển đổi tối đa 10 font cùng lúc hoàn toàn miễn phí. Để không giới hạn số lượng và ủng hộ tinh thần tác giả, vui lòng Donate qua các hình thức dưới đây nhé! ❤️
+                Hệ thống chỉ cho phép chuyển đổi tối đa 10 font cùng lúc hoàn toàn miễn phí. Để yêu cầu tính năng mới và ủng hộ tinh thần tác giả, vui lòng Donate qua hình thức dưới đây nhé! ❤️
               </p>
 
               <div className="space-y-4">
@@ -406,8 +406,8 @@ export default function Home() {
                     <Image 
                       src="/momo-qr.jpg" 
                       alt="Momo QR Code" 
-                      width={192}
-                      height={192}
+                      width={256}
+                      height={256}
                       className="object-contain rounded-lg"
                       unoptimized={true}
                     />
