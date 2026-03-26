@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test fonts
+*.woff
+*.woff2
+*.ttf
+*.otf
+test-*.js
