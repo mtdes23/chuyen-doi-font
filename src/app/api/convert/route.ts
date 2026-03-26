@@ -55,13 +55,20 @@ function extractFontMetadata(font: opentype.Font): FontMetadata {
 
     // Check if font has variable font tables (gvar, avar)
     const isVariable = !!(font.tables && (font.tables.gvar || font.tables.avar));
+    
+    // Get glyph count safely
+    const glyphCount = Array.isArray(font.glyphs) 
+      ? font.glyphs.length 
+      : (font.glyphs && typeof font.glyphs === 'object' 
+        ? Object.keys(font.glyphs).length 
+        : 0);
 
     return {
       familyName: familyName as string,
       styleName: style as string,
       version: ver as string,
       copyrightNotice: copy as string,
-      glyphCount: font.glyphs.length,
+      glyphCount,
       unitsPerEm: font.unitsPerEm || 1000,
       isVariable
     };
@@ -141,11 +148,16 @@ function createSVGFont(font: opentype.Font, metadata?: FontMetadata): Buffer {
 `;
 
   // Add glyphs (sample - full implementation would include all glyphs)
-  font.glyphs.forEach((glyph: any, index: number) => {
-    if (glyph.name && glyph.path) {
-      svg += `      <glyph glyph-name="${glyph.name}" unicode="${String.fromCharCode(index)}" horiz-adv-x="${glyph.advanceWidth || 0}" />\n`;
-    }
-  });
+  try {
+    const glyphArray = Array.isArray(font.glyphs) ? font.glyphs : Object.values(font.glyphs || {});
+    glyphArray.forEach((glyph: any, index: number) => {
+      if (glyph && glyph.name) {
+        svg += `      <glyph glyph-name="${glyph.name}" unicode="${String.fromCharCode(index)}" horiz-adv-x="${glyph.advanceWidth || 0}" />\n`;
+      }
+    });
+  } catch (err) {
+    console.warn('Error iterating glyphs for SVG:', err);
+  }
 
   svg += `    </font>
   </defs>
@@ -176,14 +188,19 @@ CharacterSet ISO8859-1
 
   // Add character metrics for sample glyphs
   let charCount = 0;
-  afm += 'StartCharMetrics ' + Math.min(font.glyphs.length, 256) + '\n';
+  try {
+    const glyphArray = Array.isArray(font.glyphs) ? font.glyphs : Object.values(font.glyphs || {});
+    afm += 'StartCharMetrics ' + Math.min(glyphArray.length, 256) + '\n';
 
-  font.glyphs.forEach((glyph: any, index: number) => {
-    if (charCount < 256 && glyph.name) {
-      afm += `C ${index} ; WX ${glyph.advanceWidth || 0} ; N ${glyph.name} ;\n`;
-      charCount++;
-    }
-  });
+    glyphArray.forEach((glyph: any, index: number) => {
+      if (charCount < 256 && glyph && glyph.name) {
+        afm += `C ${index} ; WX ${glyph.advanceWidth || 0} ; N ${glyph.name} ;\n`;
+        charCount++;
+      }
+    });
+  } catch (err) {
+    console.warn('Error iterating glyphs for AFM:', err);
+  }
 
   afm += 'EndCharMetrics\nEndFontMetrics\n';
 
