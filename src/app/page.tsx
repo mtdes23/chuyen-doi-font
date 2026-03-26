@@ -1,19 +1,47 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, CheckCircle, AlertCircle, RefreshCw, Type, File as FileIcon, Loader2, Archive, Coffee, X, Heart } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, RefreshCw, Type, File as FileIcon, Loader2, Archive, Coffee, X, Heart, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import JSZip from "jszip";
 
 type FileStatus = "idle" | "converting" | "success" | "error";
+type FontFormat = "ttf" | "otf" | "woff" | "woff2" | "eot" | "var-ttf" | "svg" | "afm";
+
+// Format categories for better UI organization
+const FORMAT_CATEGORIES = {
+  desktop: { label: "🖥️ Desktop Formats", formats: ["ttf", "otf", "var-ttf"] },
+  web: { label: "🌐 Web Formats", formats: ["woff", "woff2", "svg"] },
+  legacy: { label: "📦 Legacy/Special", formats: ["eot", "afm"] }
+};
+
+const SUPPORTED_FORMATS: { value: FontFormat; label: string; description: string }[] = [
+  { value: "ttf", label: "TTF (TrueType)", description: "Classic desktop font format, widely supported" },
+  { value: "otf", label: "OTF (OpenType)", description: "Modern format with advanced typography features" },
+  { value: "var-ttf", label: "Variable TTF", description: "Single font with multiple weight/width variations" },
+  { value: "woff", label: "WOFF (Web Font)", description: "Optimized for web, supported by all modern browsers" },
+  { value: "woff2", label: "WOFF2 (Web Font 2)", description: "Highly compressed web format, best for performance" },
+  { value: "svg", label: "SVG Font", description: "Vector-based font for web animations and scalability" },
+  { value: "eot", label: "EOT (Embedded OpenType)", description: "Legacy Internet Explorer format" },
+  { value: "afm", label: "AFM (Font Metrics)", description: "Adobe Font Metrics - text format with font specifications" }
+];
+
+const SUPPORTED_INPUT_EXTS = ["ttf", "otf", "woff", "woff2", "var-ttf", "eot", "svg", "afm"];
 
 interface FileEntry {
   id: string;
   file: File;
   status: FileStatus;
   errorMessage?: string;
-  ttf?: string;
+  convertedData?: string;
+  outputFormat?: FontFormat;
+  metadata?: {
+    familyName?: string;
+    styleName?: string;
+    version?: string;
+    glyphCount?: number;
+  };
 }
 
 export default function Home() {
@@ -21,6 +49,8 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
+  const [outputFormat, setOutputFormat] = useState<FontFormat>("ttf");
+  const [showFormatMenu, setShowFormatMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -48,10 +78,11 @@ export default function Home() {
   };
 
   const addFiles = (selectedFiles: File[]) => {
-    // Filter woff and woff2
+    // Filter supported font formats
     const validFiles = selectedFiles.filter(f => {
       const name = f.name.toLowerCase();
-      return name.endsWith(".woff2") || name.endsWith(".woff");
+      const ext = name.split('.').pop() || "";
+      return SUPPORTED_INPUT_EXTS.includes(ext);
     });
 
     if (validFiles.length === 0) return;
@@ -68,7 +99,8 @@ export default function Home() {
         combined.push({
           id: Math.random().toString(36).substr(2, 9),
           file,
-          status: "idle"
+          status: "idle",
+          outputFormat
         });
       }
 
@@ -101,6 +133,7 @@ export default function Home() {
       try {
         const formData = new FormData();
         formData.append("file", files[i].file);
+        formData.append("outputFormat", outputFormat);
 
         const res = await fetch("/api/convert", {
           method: "POST",
@@ -113,7 +146,9 @@ export default function Home() {
         setFiles(prev => {
           const next = [...prev];
           next[i].status = "success";
-          next[i].ttf = data.ttf;
+          next[i].convertedData = data.data;
+          next[i].outputFormat = outputFormat;
+          next[i].metadata = data.metadata;
           return next;
         });
       } catch (err: unknown) {
@@ -128,25 +163,26 @@ export default function Home() {
   };
 
   const downloadAllAsZip = async () => {
-    const successfulFiles = files.filter(f => f.status === "success" && f.ttf);
+    const successfulFiles = files.filter(f => f.status === "success" && f.convertedData);
     if (successfulFiles.length === 0) return;
 
     setIsZipping(true);
     const zip = new JSZip();
 
     successfulFiles.forEach(f => {
-      const nameWithoutExt = f.file.name.replace(/\.woff2?$/i, "");
-      zip.file(`${nameWithoutExt}.ttf`, f.ttf!, { base64: true });
+      const nameWithoutExt = f.file.name.replace(/\.(ttf|otf|woff2?|WOFF|WOFF2|TTF|OTF)$/i, "");
+      const ext = f.outputFormat || "ttf";
+      zip.file(`${nameWithoutExt}.${ext}`, f.convertedData!, { base64: true });
     });
 
     const content = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(content);
-    
+
     const a = document.createElement("a");
     a.href = url;
     a.download = "converted-fonts.zip";
     a.click();
-    
+
     URL.revokeObjectURL(url);
     setIsZipping(false);
   };
@@ -181,11 +217,62 @@ export default function Home() {
             Font Converter Pro
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Batch convert up to 10 <b>.woff</b> or <b>.woff2</b> files into fully compatible TTF format at once.
+            Batch convert up to 10 <b>font files</b> between multiple formats at once.
           </p>
         </motion.div>
 
         <div className="w-full bg-slate-900/50 backdrop-blur-xl rounded-3xl p-6 shadow-2xl ring-1 ring-white/10 flex flex-col gap-6">
+          {!hasFiles ? (
+            <>
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <h3 className="text-sm font-medium text-slate-300">Output Format</h3>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowFormatMenu(!showFormatMenu)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg text-sm text-slate-200 transition-colors"
+                  >
+                    {SUPPORTED_FORMATS.find(f => f.value === outputFormat)?.label}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+
+                  {showFormatMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full right-0 mt-2 bg-slate-800 border border-white/10 rounded-lg shadow-2xl z-10 w-[320px] max-h-[400px] overflow-y-auto"
+                    >
+                      {Object.entries(FORMAT_CATEGORIES).map(([category, { label, formats }]) => (
+                        <div key={category}>
+                          <div className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-900/50 border-b border-white/5 sticky top-0">
+                            {label}
+                          </div>
+                          {SUPPORTED_FORMATS.filter(f => formats.includes(f.value)).map(fmt => (
+                            <button
+                              key={fmt.value}
+                              onClick={() => {
+                                setOutputFormat(fmt.value);
+                                setShowFormatMenu(false);
+                              }}
+                              className={`w-full text-left px-4 py-3 transition-colors border-b border-white/5 last:border-b-0 ${
+                                outputFormat === fmt.value
+                                  ? "bg-blue-600/30 text-blue-400"
+                                  : "text-slate-300 hover:bg-slate-700/50"
+                              }`}
+                            >
+                              <div className="font-medium text-sm">{fmt.label}</div>
+                              <div className="text-xs text-slate-500 mt-1">{fmt.description}</div>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+              </>
+          ) : null}
+
           {!hasFiles ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -205,7 +292,7 @@ export default function Home() {
                 multiple
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept=".woff,.woff2"
+                accept=".ttf,.otf,.woff,.woff2,.var-ttf,.eot,.svg,.afm"
                 className="hidden"
               />
               <div className="flex flex-col items-center gap-4 cursor-pointer">
@@ -214,10 +301,10 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="text-xl font-semibold text-slate-200">
-                    Click or drag your .woff / .woff2 files here
+                    Click or drag your font files here
                   </p>
                   <p className="text-sm text-slate-500 mt-2">
-                    Convert up to 10 files simultaneously
+                    Supported: All major formats - .ttf, .otf, .woff, .woff2, .var-ttf, .eot, .svg, .afm
                   </p>
                 </div>
               </div>
@@ -250,7 +337,7 @@ export default function Home() {
                   multiple
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  accept=".woff,.woff2"
+                  accept=".ttf,.otf,.woff,.woff2,.var-ttf,.eot,.svg,.afm"
                   className="hidden"
                 />
               </div>
@@ -272,7 +359,7 @@ export default function Home() {
                           {(file.file.size / 1024).toFixed(1)} KB
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                         {file.status === "idle" && !isConverting && (
                           <button
@@ -376,7 +463,7 @@ export default function Home() {
               exit={{ scale: 0.9, y: 20 }}
               className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
             >
-              <button 
+              <button
                 onClick={() => setShowDonate(false)}
                 className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full"
               >
@@ -401,11 +488,11 @@ export default function Home() {
                     <span className="font-semibold text-white">Buy Me a Coffee (Momo)</span>
                   </div>
                   <p className="text-slate-400 text-sm ml-9 break-all">Số điện thoại: <strong className="text-white text-base">0336779222</strong></p>
-                  
+
                   <div className="mt-4 flex justify-center bg-white p-2 rounded-xl">
-                    <Image 
-                      src="/momo-qr.jpg" 
-                      alt="Momo QR Code" 
+                    <Image
+                      src="/momo-qr.jpg"
+                      alt="Momo QR Code"
                       width={256}
                       height={256}
                       className="object-contain rounded-lg"
@@ -415,7 +502,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => setShowDonate(false)}
                 className="w-full mt-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-colors"
               >
