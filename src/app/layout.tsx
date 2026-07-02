@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Font Converter Pro",
-  description: "Web-based WOFF and WOFF2 to TTF/OTF font converter tool",
+  title: "Font Converter Pro | WOFF/WOFF2 to TTF/OTF",
+  description: "Professional font conversion tool. Convert WOFF and WOFF2 files to TTF or OTF format instantly. Fast, secure, and free.",
+  keywords: ["font converter", "woff to ttf", "woff2 to otf", "font conversion", "web font converter"],
 };
 
 export default function RootLayout({

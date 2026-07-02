@@ -3,7 +3,6 @@ import opentype from 'opentype.js';
 // @ts-expect-error wawoff2 doesn't have type definitions
 import wawoff2 from 'wawoff2';
 
-// Ensure it runs in the Node.js environment
 export const runtime = 'nodejs';
 
 type SupportedFormat = 'ttf' | 'otf' | 'woff' | 'woff2' | 'eot' | 'var-ttf' | 'svg' | 'afm';
@@ -17,25 +16,15 @@ type FontMetadata = {
   isVariable?: boolean;
 };
 
-interface ConversionRequest {
-  file: File;
-  outputFormat?: SupportedFormat;
-  outputFormats?: SupportedFormat[];
-}
-
 const SUPPORTED_INPUT_FORMATS = ['ttf', 'otf', 'woff', 'woff2', 'var-ttf', 'eot', 'svg', 'afm'];
 const SUPPORTED_OUTPUT_FORMATS: SupportedFormat[] = ['ttf', 'otf', 'woff', 'woff2', 'var-ttf', 'svg', 'afm'];
-const DEFAULT_OUTPUT = 'ttf';
 
-/**
- * Extract font metadata from opentype.Font
- */
 function extractFontMetadata(font: opentype.Font): FontMetadata {
   try {
     const names = font.names.fontFamily || [];
     const styleName = font.names.fontSubfamily || [];
     const version = font.names.version || [];
-    const copyright = font.names.copyright || [];
+    const copyrightNotice = font.names.copyright || [];
 
     const familyName = Array.isArray(names) && names.length > 0
       ? names[0]
@@ -49,18 +38,16 @@ function extractFontMetadata(font: opentype.Font): FontMetadata {
       ? version[0]
       : (typeof version === 'string' ? version : '1.0');
 
-    const copy = Array.isArray(copyright) && copyright.length > 0
-      ? copyright[0]
-      : (typeof copyright === 'string' ? copyright : '');
+    const copy = Array.isArray(copyrightNotice) && copyrightNotice.length > 0
+      ? copyrightNotice[0]
+      : (typeof copyrightNotice === 'string' ? copyrightNotice : '');
 
-    // Check if font has variable font tables (gvar, avar)
     const isVariable = !!(font.tables && (font.tables.gvar || font.tables.avar));
-    
-    // Get glyph count safely
-    const glyphCount = Array.isArray(font.glyphs) 
-      ? font.glyphs.length 
-      : (font.glyphs && typeof font.glyphs === 'object' 
-        ? Object.keys(font.glyphs).length 
+
+    const glyphCount = Array.isArray(font.glyphs)
+      ? font.glyphs.length
+      : (font.glyphs && typeof font.glyphs === 'object'
+        ? Object.keys(font.glyphs).length
         : 0);
 
     return {
@@ -78,18 +65,11 @@ function extractFontMetadata(font: opentype.Font): FontMetadata {
   }
 }
 
-/**
- * Convert font buffer to TTF buffer using opentype.js
- * This serves as an intermediate format for cross-format conversion
- */
 function fontToTTF(font: opentype.Font): Buffer {
   const arrayBuffer = font.toArrayBuffer();
   return Buffer.from(arrayBuffer);
 }
 
-/**
- * Convert TTF buffer back to desired output format
- */
 function ttfToFormat(ttfBuffer: Buffer, format: SupportedFormat, metadata?: FontMetadata): Buffer {
   const font = opentype.parse(ttfBuffer.buffer);
 
@@ -98,32 +78,23 @@ function ttfToFormat(ttfBuffer: Buffer, format: SupportedFormat, metadata?: Font
       return ttfBuffer;
 
     case 'var-ttf':
-      // Variable TTF - preserve with same structure as TTF
-      // Variable font data is preserved in gvar, glyf, etc. tables
       const arrayBuffer = font.toArrayBuffer();
       return Buffer.from(arrayBuffer);
 
     case 'otf':
-      // OpenType fonts (.otf) - output as TTF-compatible
       const arrayBufferOtf = font.toArrayBuffer();
       return Buffer.from(arrayBufferOtf);
 
     case 'woff':
-      // WOFF format - TTF data with simple compression wrapper
-      // For actual WOFF compression, would need additional library
       return ttfBuffer;
 
     case 'woff2':
-      // WOFF2 - highly compressed web font format
-      // Return TTF as fallback (real WOFF2 requires compression library)
       return ttfBuffer;
 
     case 'svg':
-      // SVG font format - create SVG with font glyphs
       return createSVGFont(font, metadata);
 
     case 'afm':
-      // AFM (Adobe Font Metrics) - text-based metrics format
       return createAFMFont(font, metadata);
 
     default:
@@ -131,9 +102,6 @@ function ttfToFormat(ttfBuffer: Buffer, format: SupportedFormat, metadata?: Font
   }
 }
 
-/**
- * Create SVG font format from opentype.Font
- */
 function createSVGFont(font: opentype.Font, metadata?: FontMetadata): Buffer {
   const fontFamily = metadata?.familyName || 'CustomFont';
   const fontStyle = metadata?.styleName || 'Regular';
@@ -147,10 +115,9 @@ function createSVGFont(font: opentype.Font, metadata?: FontMetadata): Buffer {
       <font-face font-family="${fontFamily}" font-style="${fontStyle}" units-per-em="${unitsPerEm}" />
 `;
 
-  // Add glyphs (sample - full implementation would include all glyphs)
   try {
     const glyphArray = Array.isArray(font.glyphs) ? font.glyphs : Object.values(font.glyphs || {});
-    glyphArray.forEach((glyph: any, index: number) => {
+    glyphArray.forEach((glyph: opentype.Glyph, index: number) => {
       if (glyph && glyph.name) {
         svg += `      <glyph glyph-name="${glyph.name}" unicode="${String.fromCharCode(index)}" horiz-adv-x="${glyph.advanceWidth || 0}" />\n`;
       }
@@ -166,9 +133,6 @@ function createSVGFont(font: opentype.Font, metadata?: FontMetadata): Buffer {
   return Buffer.from(svg, 'utf-8');
 }
 
-/**
- * Create AFM (Adobe Font Metrics) format from opentype.Font
- */
 function createAFMFont(font: opentype.Font, metadata?: FontMetadata): Buffer {
   const fontFamily = metadata?.familyName || 'CustomFont';
   const fontStyle = metadata?.styleName || 'Regular';
@@ -186,13 +150,12 @@ IsFixedPitch false
 CharacterSet ISO8859-1
 `;
 
-  // Add character metrics for sample glyphs
   let charCount = 0;
   try {
     const glyphArray = Array.isArray(font.glyphs) ? font.glyphs : Object.values(font.glyphs || {});
     afm += 'StartCharMetrics ' + Math.min(glyphArray.length, 256) + '\n';
 
-    glyphArray.forEach((glyph: any, index: number) => {
+    glyphArray.forEach((glyph: opentype.Glyph, index: number) => {
       if (charCount < 256 && glyph && glyph.name) {
         afm += `C ${index} ; WX ${glyph.advanceWidth || 0} ; N ${glyph.name} ;\n`;
         charCount++;
@@ -207,24 +170,6 @@ CharacterSet ISO8859-1
   return Buffer.from(afm, 'utf-8');
 }
 
-/**
- * Create a basic EOT format from TTF data
- * EOT is essentially TTF with a header and encrypted checksum
- */
-function createEOTFromTTF(ttfBuffer: Buffer): Buffer {
-  // Simplified EOT creation - prepend EOT header
-  // Full EOT spec would include RootStrings, Signatures, etc.
-  // This provides basic compatibility
-  const eotHeader = Buffer.alloc(8);
-  eotHeader.writeUInt32LE(ttfBuffer.length, 0); // Length 1
-  eotHeader.writeUInt32LE(ttfBuffer.length, 4); // Length 2
-
-  return Buffer.concat([eotHeader, ttfBuffer]);
-}
-
-/**
- * Parse font from various input formats to opentype.Font
- */
 async function parseFont(buffer: Buffer, inputFormat: string): Promise<opentype.Font> {
   switch (inputFormat.toLowerCase()) {
     case 'woff2':
@@ -238,13 +183,10 @@ async function parseFont(buffer: Buffer, inputFormat: string): Promise<opentype.
       return opentype.parse(buffer.buffer);
 
     case 'eot':
-      // EOT format - skip the 8-byte header and parse TTF
       const ttfFromEot = buffer.slice(8);
       return opentype.parse(ttfFromEot.buffer);
 
     case 'svg':
-      // SVG fonts: extract embedded TTF/OTF if present
-      // For simplicity, try to find binary data in SVG
       const svgStr = buffer.toString('utf-8');
       const match = svgStr.match(/base64,(.+?)['"]/);
       if (match && match[1]) {
@@ -290,16 +232,9 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Parse input font to opentype.Font object
     const font = await parseFont(buffer, inputFormat);
-
-    // Extract font metadata
     const metadata = extractFontMetadata(font);
-
-    // Convert to TTF as intermediate format
     const ttfBuffer = fontToTTF(font);
-
-    // Convert from TTF to desired output format
     const outputBuffer = ttfToFormat(ttfBuffer, outputFormat, metadata);
     const outputBase64 = outputBuffer.toString('base64');
 
@@ -311,8 +246,8 @@ export async function POST(req: Request) {
       metadata: metadata
     });
   } catch (error: unknown) {
-    console.error("Conversion error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error('Conversion error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: 'Failed to convert font', details: errorMessage },
       { status: 500 }
